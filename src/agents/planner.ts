@@ -11,6 +11,9 @@ import Anthropic from '@anthropic-ai/sdk';
 import type { QAAgentConfig } from '../core/config.js';
 import type { AppAnalysis, Route, ApiEndpoint, Form, DataModel } from '../core/analyzer.js';
 import type { AgentFn, PlanResult } from '../orchestrator.js';
+import { withRetry } from '../core/api-retry.js';
+import { parseTestPlanMarkdown } from '../core/test-plan.js';
+import type { TestPlan } from '../core/test-plan.js';
 
 // ---------------------------------------------------------------------------
 // PlannerAgent class
@@ -30,18 +33,20 @@ export class PlannerAgent {
    *
    * @param analysis - Structured analysis of the target application
    * @param existingPlan - Optional existing test plan to use as baseline
-   * @returns Markdown test plan content
+   * @returns Markdown test plan content and structured JSON plan
    */
-  async generatePlan(analysis: AppAnalysis, existingPlan?: string): Promise<string> {
+  async generatePlan(analysis: AppAnalysis, existingPlan?: string): Promise<{ markdown: string; plan: TestPlan }> {
     const prompt = this.buildPrompt(analysis, existingPlan);
     const systemPrompt = this.buildSystemPrompt();
 
-    const response = await this.client.messages.create({
-      model: this.model,
-      max_tokens: 16384,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: prompt }],
-    });
+    const response = await withRetry(() =>
+      this.client.messages.create({
+        model: this.model,
+        max_tokens: 16384,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    );
 
     // Extract text from response
     const planMarkdown = response.content
@@ -49,13 +54,20 @@ export class PlannerAgent {
       .map((block) => block.text)
       .join('\n');
 
-    // Write the plan to the plans directory
+    // Write the Markdown plan
     const plansDir = this.config.output.plansDir;
     mkdirSync(plansDir, { recursive: true });
     const planPath = join(plansDir, 'test-plan.md');
     writeFileSync(planPath, planMarkdown, 'utf-8');
 
-    return planMarkdown;
+    // Parse into structured JSON and validate
+    const plan = parseTestPlanMarkdown(planMarkdown);
+
+    // Write the JSON version for deterministic downstream consumption
+    const jsonPath = join(plansDir, 'test-plan.json');
+    writeFileSync(jsonPath, JSON.stringify(plan, null, 2), 'utf-8');
+
+    return { markdown: planMarkdown, plan };
   }
 
   // -------------------------------------------------------------------------
@@ -326,23 +338,14 @@ export const planAgent: AgentFn<PlanResult> = async (ctx) => {
 
   ctx.logger.info('Generating test plan with Claude...');
   const planner = new PlannerAgent(ctx.config);
-  const planMarkdown = await planner.generatePlan(analysis, existingPlan);
-
-  // Count scenarios by counting table rows (lines starting with | that aren't headers/separators)
-  const scenarioCount = planMarkdown
-    .split('\n')
-    .filter((line) => {
-      const trimmed = line.trim();
-      return (
-        trimmed.startsWith('|') &&
-        !trimmed.startsWith('| ID') &&
-        !trimmed.startsWith('|--') &&
-        !trimmed.startsWith('|-')
-      );
-    }).length;
+  const { plan } = await planner.generatePlan(analysis, existingPlan);
 
   const planPath = join(ctx.config.output.plansDir, 'test-plan.md');
-  ctx.logger.info({ scenarioCount, planPath }, 'Test plan generated');
+  const jsonPath = join(ctx.config.output.plansDir, 'test-plan.json');
+  ctx.logger.info(
+    { scenarioCount: plan.totalScenarios, planPath, jsonPath },
+    'Test plan generated',
+  );
 
-  return { scenarioCount, planPath };
+  return { scenarioCount: plan.totalScenarios, planPath };
 };

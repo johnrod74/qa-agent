@@ -5,6 +5,7 @@ import { loadConfig } from './core/config.js';
 import { createLogger } from './core/logger.js';
 import { StateManager } from './core/state.js';
 import { Orchestrator } from './orchestrator.js';
+import type { CliOptions } from './orchestrator.js';
 
 const program = new Command();
 
@@ -49,7 +50,11 @@ addGlobalOptions(
     .option('--areas <list>', 'Only plan for specified areas (comma-separated)'),
 ).action(async (opts) => {
   const { config, logger } = await setup(opts);
-  const orchestrator = new Orchestrator(config, logger);
+  const cliOptions: CliOptions = {
+    fromScratch: opts.fromScratch,
+    areas: opts.areas,
+  };
+  const orchestrator = new Orchestrator(config, logger, cliOptions);
   await orchestrator.runPlan();
 });
 
@@ -64,7 +69,10 @@ addGlobalOptions(
     .option('--force', 'Overwrite existing test files', false),
 ).action(async (opts) => {
   const { config, logger } = await setup(opts);
-  const orchestrator = new Orchestrator(config, logger);
+  const cliOptions: CliOptions = {
+    force: opts.force,
+  };
+  const orchestrator = new Orchestrator(config, logger, cliOptions);
   await orchestrator.runGenerate();
 });
 
@@ -82,7 +90,13 @@ addGlobalOptions(
     .option('--debug', 'Enable Playwright debug mode', false),
 ).action(async (opts) => {
   const { config, logger } = await setup(opts);
-  const orchestrator = new Orchestrator(config, logger);
+  const cliOptions: CliOptions = {
+    filter: opts.filter,
+    viewport: opts.viewport,
+    headed: opts.headed,
+    debug: opts.debug,
+  };
+  const orchestrator = new Orchestrator(config, logger, cliOptions);
   await orchestrator.runTest();
 });
 
@@ -98,7 +112,11 @@ addGlobalOptions(
     .option('--max <n>', 'Max concurrent fix agents', '3'),
 ).action(async (opts) => {
   const { config, logger } = await setup(opts);
-  const orchestrator = new Orchestrator(config, logger);
+  const cliOptions: CliOptions = {
+    issueNumber: opts.issue ? Number(opts.issue) : undefined,
+    maxFixAgents: opts.max ? Number(opts.max) : undefined,
+  };
+  const orchestrator = new Orchestrator(config, logger, cliOptions);
   await orchestrator.runFix();
 });
 
@@ -114,7 +132,11 @@ addGlobalOptions(
     .option('--auto-merge', 'Auto-merge validated PRs', false),
 ).action(async (opts) => {
   const { config, logger } = await setup(opts);
-  const orchestrator = new Orchestrator(config, logger);
+  const cliOptions: CliOptions = {
+    branch: opts.branch,
+    autoMerge: opts.autoMerge,
+  };
+  const orchestrator = new Orchestrator(config, logger, cliOptions);
   await orchestrator.runValidate();
 });
 
@@ -141,6 +163,7 @@ addGlobalOptions(
     noValidate: opts.validate === false,
     planOnly: opts.planOnly,
     dryRun: opts.dryRun,
+    cliOptions: {},
   });
 });
 

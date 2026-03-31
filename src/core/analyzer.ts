@@ -94,6 +94,16 @@ export interface AppAnalysis {
 }
 
 // ---------------------------------------------------------------------------
+// Limits for codebase analysis (B4 — prevent context-window blow-up)
+// ---------------------------------------------------------------------------
+
+/** Maximum number of source files to include in analysis. */
+const MAX_FILES = 500;
+
+/** Maximum individual file size (in bytes) to read. Files larger are skipped. */
+const MAX_FILE_SIZE_BYTES = 100_000; // 100 KB
+
+// ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
 
@@ -574,7 +584,7 @@ export async function analyzeApp(config: QAAgentConfig): Promise<AppAnalysis> {
   // Scan all source files for forms, stores, rules, and components
   // -------------------------------------------------------------------------
 
-  const sourceFiles = walkDir(codebasePath, (f) => {
+  let sourceFiles = walkDir(codebasePath, (f) => {
     const ext = extname(f);
     if (!['.ts', '.tsx', '.js', '.jsx'].includes(ext)) return false;
     if (f.includes('node_modules') || f.includes('.next') || f.includes('dist')) return false;
@@ -588,7 +598,33 @@ export async function analyzeApp(config: QAAgentConfig): Promise<AppAnalysis> {
     return true;
   });
 
+  // Enforce file count limit (B4)
+  if (sourceFiles.length > MAX_FILES) {
+    console.warn(
+      `[qa-agent] WARNING: Found ${sourceFiles.length} source files, exceeding limit of ${MAX_FILES}. Truncating to first ${MAX_FILES} files.`,
+    );
+    sourceFiles = sourceFiles.slice(0, MAX_FILES);
+  }
+
+  let skippedDueToSize = 0;
+
   for (const file of sourceFiles) {
+    // Skip files that exceed size limit (B4)
+    try {
+      const fileStat = statSync(file);
+      if (fileStat.size > MAX_FILE_SIZE_BYTES) {
+        skippedDueToSize++;
+        console.warn(
+          `[qa-agent] WARNING: Skipping ${relative(codebasePath, file)} (${fileStat.size} bytes exceeds ${MAX_FILE_SIZE_BYTES} byte limit)`,
+        );
+        continue;
+      }
+    } catch {
+      // If stat fails, skip the file
+      skippedDueToSize++;
+      continue;
+    }
+
     const content = safeReadFile(file);
     const relPath = relative(codebasePath, file);
     const fileName = basename(file, extname(file));
@@ -665,6 +701,12 @@ export async function analyzeApp(config: QAAgentConfig): Promise<AppAnalysis> {
   // -------------------------------------------------------------------------
 
   const authFlows = detectAuth(sourceFiles, codebasePath);
+
+  // Summary log (B4)
+  const analyzedCount = sourceFiles.length - skippedDueToSize;
+  console.log(
+    `[qa-agent] Analyzed ${analyzedCount} files (${skippedDueToSize} skipped due to size)`,
+  );
 
   return {
     routes,

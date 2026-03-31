@@ -85,6 +85,13 @@ function generateGlobalSetup(config: QAAgentConfig): string {
   lines.push(`/**`);
   lines.push(` * Global setup — runs once before the entire test suite.`);
   lines.push(` * Seeds the database to a known-good state.`);
+  lines.push(` *`);
+  lines.push(` * DATA ISOLATION NOTE: This seed runs once globally, not per-worker.`);
+  lines.push(` * If you enable fullyParallel in playwright.config.ts, you must implement`);
+  lines.push(` * a per-worker data isolation strategy to avoid conflicts. Options include:`);
+  lines.push(` *   - Per-worker database schemas (e.g., worker_0, worker_1, ...)`);
+  lines.push(` *   - Transaction rollback after each test`);
+  lines.push(` *   - Unique test data per worker using workerInfo.workerIndex`);
   lines.push(` */`);
   lines.push(`async function globalSetup() {`);
   lines.push(`  console.log('[qa-agent] Running global setup...');`);
@@ -183,7 +190,10 @@ function generatePlaywrightConfig(config: QAAgentConfig): string {
   lines.push(`  timeout: ${config.testing.timeout ?? 30_000},`);
   lines.push(`  retries: ${config.testing.retries ?? 1},`);
   lines.push(`  workers: ${config.testing.maxParallel ?? 4},`);
-  lines.push(`  fullyParallel: true,`);
+  lines.push(`  // Sequential by default to avoid test data conflicts in shared databases.`);
+  lines.push(`  // For parallel execution, the app needs per-worker data isolation`);
+  lines.push(`  // (e.g., per-worker DB schemas, transaction rollback, or isolated seed data).`);
+  lines.push(`  fullyParallel: false,`);
   lines.push('');
   lines.push(`  reporter: [`);
   lines.push(`    ['list'],`);

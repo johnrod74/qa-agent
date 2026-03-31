@@ -48,11 +48,27 @@ export interface ValidateResult {
   regressions: number;
 }
 
+/** CLI options that agents may need to adapt their behaviour. */
+export interface CliOptions {
+  fromScratch?: boolean;
+  areas?: string;
+  force?: boolean;
+  filter?: string;
+  viewport?: string;
+  headed?: boolean;
+  debug?: boolean;
+  issueNumber?: number;
+  maxFixAgents?: number;
+  branch?: string;
+  autoMerge?: boolean;
+}
+
 /** Common context passed to every agent function. */
 export interface AgentContext {
   config: QAAgentConfig;
   logger: pino.Logger;
   state: RunState;
+  cliOptions: CliOptions;
 }
 
 /**
@@ -79,6 +95,8 @@ export interface RunOptions {
   planOnly?: boolean;
   /** Generate artifacts but don't create issues or PRs. */
   dryRun?: boolean;
+  /** CLI-specific options forwarded to agent functions. */
+  cliOptions?: CliOptions;
 }
 
 // ---------------------------------------------------------------------------
@@ -95,12 +113,15 @@ export interface RunOptions {
  */
 export class Orchestrator {
   private readonly stateManager: StateManager;
+  private readonly cliOptions: CliOptions;
 
   constructor(
     private readonly config: QAAgentConfig,
     private readonly logger: pino.Logger,
+    cliOptions: CliOptions = {},
   ) {
     this.stateManager = new StateManager(config.output.artifactsDir);
+    this.cliOptions = cliOptions;
   }
 
   // -----------------------------------------------------------------------
@@ -112,6 +133,10 @@ export class Orchestrator {
    * Phases can be selectively skipped via `RunOptions`.
    */
   async runAll(options: RunOptions = {}): Promise<void> {
+    // Merge any cliOptions from RunOptions into the instance-level cliOptions
+    if (options.cliOptions) {
+      Object.assign(this.cliOptions, options.cliOptions);
+    }
     this.logger.info({ runOptions: options }, 'Starting QA Agent run');
 
     if (!options.skipPlan) {
@@ -160,7 +185,7 @@ export class Orchestrator {
 
     try {
       const { planAgent } = await import('./agents/planner.js');
-      const result = await planAgent({ config: this.config, logger: this.logger, state: runState });
+      const result = await planAgent({ config: this.config, logger: this.logger, state: runState, cliOptions: this.cliOptions });
 
       runState.plan = { scenarioCount: result.scenarioCount, generatedAt: new Date().toISOString() };
       this.stateManager.save();
@@ -181,6 +206,7 @@ export class Orchestrator {
         config: this.config,
         logger: this.logger,
         state: runState,
+        cliOptions: this.cliOptions,
       });
 
       this.logger.info(
@@ -199,7 +225,7 @@ export class Orchestrator {
 
     try {
       const { testAgent } = await import('./agents/runner.js');
-      const result = await testAgent({ config: this.config, logger: this.logger, state: runState });
+      const result = await testAgent({ config: this.config, logger: this.logger, state: runState, cliOptions: this.cliOptions });
 
       runState.tests = {
         total: result.total,
@@ -225,7 +251,7 @@ export class Orchestrator {
 
     try {
       const { fixAgent } = await import('./agents/fixer.js');
-      const result = await fixAgent({ config: this.config, logger: this.logger, state: runState });
+      const result = await fixAgent({ config: this.config, logger: this.logger, state: runState, cliOptions: this.cliOptions });
 
       this.logger.info(
         { attempted: result.attempted, succeeded: result.succeeded },
@@ -247,6 +273,7 @@ export class Orchestrator {
         config: this.config,
         logger: this.logger,
         state: runState,
+        cliOptions: this.cliOptions,
       });
 
       runState.validation = {

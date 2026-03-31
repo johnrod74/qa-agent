@@ -8,97 +8,17 @@
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { join, relative, basename } from 'node:path';
 import type { QAAgentConfig } from '../core/config.js';
+import { parseTestPlanMarkdown } from '../core/test-plan.js';
+import type { TestScenario } from '../core/test-plan.js';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-interface TestScenario {
-  id: string;
-  scenario: string;
-  priority: string;
-  type: string;
-  viewport: string;
-  preconditions: string;
-  area: string;
-  subArea: string;
-}
-
 interface AreaGroup {
   area: string;
   subArea: string;
   scenarios: TestScenario[];
-}
-
-// ---------------------------------------------------------------------------
-// Markdown parsing
-// ---------------------------------------------------------------------------
-
-/**
- * Parse the Markdown test plan and extract all test scenarios from tables.
- *
- * Expects the format:
- * ```
- * ## Area: Checkout Flow
- * ### Sub-area: Fulfillment Selection
- * | ID | Scenario | Priority | Type | Viewport | Preconditions |
- * |----|----------|----------|------|----------|---------------|
- * | CF-1 | Some scenario | P0 | functional | both | Cart has items |
- * ```
- */
-function parseTestPlan(markdown: string): TestScenario[] {
-  const scenarios: TestScenario[] = [];
-  const lines = markdown.split('\n');
-
-  let currentArea = 'General';
-  let currentSubArea = 'Default';
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
-
-    // Track area headers: ## Area: XYZ
-    const areaMatch = line.match(/^##\s+Area:\s*(.+)/i);
-    if (areaMatch) {
-      currentArea = areaMatch[1].trim();
-      currentSubArea = 'Default';
-      continue;
-    }
-
-    // Track sub-area headers: ### Sub-area: XYZ
-    const subAreaMatch = line.match(/^###\s+(?:Sub-area|Subarea):\s*(.+)/i);
-    if (subAreaMatch) {
-      currentSubArea = subAreaMatch[1].trim();
-      continue;
-    }
-
-    // Parse table rows (skip header and separator rows)
-    if (!line.startsWith('|')) continue;
-    // Skip header row (contains "ID" or "Scenario")
-    if (/\|\s*ID\s*\|/i.test(line)) continue;
-    // Skip separator rows (contain only |, -, and spaces)
-    if (/^\|[\s\-|]+\|$/.test(line)) continue;
-
-    // Parse the table row
-    const cells = line
-      .split('|')
-      .map((c) => c.trim())
-      .filter((c) => c.length > 0);
-
-    if (cells.length >= 6) {
-      scenarios.push({
-        id: cells[0],
-        scenario: cells[1],
-        priority: cells[2],
-        type: cells[3],
-        viewport: cells[4],
-        preconditions: cells[5],
-        area: currentArea,
-        subArea: currentSubArea,
-      });
-    }
-  }
-
-  return scenarios;
 }
 
 /**
@@ -304,8 +224,9 @@ export async function generateTestFiles(
   const testsDir = config.output.testsDir;
   mkdirSync(testsDir, { recursive: true });
 
-  // Parse the test plan
-  const scenarios = parseTestPlan(planMarkdown);
+  // Parse the test plan using the structured JSON intermediate format
+  const testPlan = parseTestPlanMarkdown(planMarkdown);
+  const scenarios = testPlan.scenarios;
   if (scenarios.length === 0) {
     return [];
   }

@@ -18,6 +18,17 @@ export function createLogger(name: string, verbose?: boolean): pino.Logger {
     name,
     level,
     timestamp: pino.stdTimeFunctions.isoTime,
+    redact: {
+      paths: [
+        'config.auth.*.steps[*].value',
+        'password',
+        'secret',
+        'token',
+        'apiKey',
+        'ANTHROPIC_API_KEY',
+      ],
+      censor: '[REDACTED]',
+    },
   };
 
   if (verbose) {
