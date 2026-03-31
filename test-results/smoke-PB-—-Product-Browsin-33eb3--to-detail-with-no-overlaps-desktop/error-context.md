@@ -1,0 +1,156 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - link "FlourBatch logo" [ref=e3] [cursor=pointer]:
+      - /url: /
+      - img "FlourBatch logo" [ref=e4]
+    - banner [ref=e5]:
+      - generic [ref=e7]:
+        - navigation [ref=e8]:
+          - link "Home" [ref=e9] [cursor=pointer]:
+            - /url: /
+          - link "Our Story" [ref=e10] [cursor=pointer]:
+            - /url: /our-story
+          - link "Cookies" [ref=e11] [cursor=pointer]:
+            - /url: /products
+          - link "Catering and Events" [ref=e12] [cursor=pointer]:
+            - /url: /bulk-orders
+          - link "Order Status" [ref=e13] [cursor=pointer]:
+            - /url: /order-status
+        - button "Open cart" [ref=e15]:
+          - img [ref=e16]
+    - generic [ref=e19]:
+      - generic [ref=e20]:
+        - heading "Cart (0)" [level=2] [ref=e21]
+        - button "Close cart" [ref=e22]: ×
+      - generic [ref=e24]:
+        - img [ref=e25]
+        - paragraph [ref=e27]: Your cart is empty
+        - link "Browse Cookies" [ref=e28] [cursor=pointer]:
+          - /url: /products
+    - main [ref=e29]:
+      - generic [ref=e31]:
+        - link "Back to Cookies" [ref=e32] [cursor=pointer]:
+          - /url: /products
+          - img [ref=e33]
+          - text: Back to Cookies
+        - generic [ref=e35]:
+          - img "Dark chocolate chip cookie from Flour Batch" [ref=e39]
+          - generic [ref=e40]:
+            - generic [ref=e41]:
+              - heading "Dark Chocolate Chip" [level=1] [ref=e42]
+              - paragraph [ref=e43]: $6.00
+            - paragraph [ref=e45]: Our take on the classic — loaded with rich dark chocolate chips and baked to golden perfection. Crispy edges, chewy center, pure comfort.
+            - generic [ref=e46]:
+              - heading "Ingredients" [level=3] [ref=e47]
+              - paragraph [ref=e48]: Locally milled Washington flour, European dark chocolate chips, butter, brown sugar, white sugar, eggs, vanilla extract, baking soda, salt
+            - generic [ref=e49]:
+              - heading "Allergens" [level=3] [ref=e50]
+              - generic [ref=e51]:
+                - generic [ref=e52]: wheat
+                - generic [ref=e53]: dairy
+                - generic [ref=e54]: eggs
+                - generic [ref=e55]: soy
+            - generic [ref=e56]:
+              - heading "Bundle Deals" [level=3] [ref=e57]
+              - paragraph [ref=e58]: Save more when you buy in bundles!
+              - generic [ref=e59]:
+                - generic [ref=e60] [cursor=pointer]:
+                  - radio "No bundleRegular price" [checked] [ref=e61]
+                  - generic [ref=e62]: No bundleRegular price
+                - generic [ref=e63] [cursor=pointer]:
+                  - 'radio "Half Dozen (6 cookies) Qty: 6Save $1.00" [ref=e64]'
+                  - generic [ref=e65]:
+                    - text: Half Dozen (6 cookies)
+                    - generic [ref=e66]:
+                      - generic [ref=e67]: "Qty: 6"
+                      - generic [ref=e68]: Save $1.00
+                - generic [ref=e69] [cursor=pointer]:
+                  - 'radio "Baker''s Dozen (13 cookies) Qty: 13Save $3.00" [ref=e70]'
+                  - generic [ref=e71]:
+                    - text: Baker's Dozen (13 cookies)
+                    - generic [ref=e72]:
+                      - generic [ref=e73]: "Qty: 13"
+                      - generic [ref=e74]: Save $3.00
+                - generic [ref=e75] [cursor=pointer]:
+                  - 'radio "Party Box (24 cookies) Qty: 24Save $12.00" [ref=e76]'
+                  - generic [ref=e77]:
+                    - text: Party Box (24 cookies)
+                    - generic [ref=e78]:
+                      - generic [ref=e79]: "Qty: 24"
+                      - generic [ref=e80]: Save $12.00
+            - generic [ref=e81]:
+              - generic [ref=e82]:
+                - generic [ref=e83]: Quantity
+                - generic [ref=e84]:
+                  - button "-" [disabled] [ref=e85]
+                  - generic [ref=e86]: "1"
+                  - button "+" [ref=e87]
+                  - generic [ref=e88]: 46 available
+              - button "Add to Cart" [ref=e89]
+    - contentinfo [ref=e90]:
+      - generic [ref=e91]:
+        - generic [ref=e92]:
+          - generic [ref=e93]:
+            - generic [ref=e94]:
+              - generic [ref=e96]: FB
+              - generic [ref=e97]: FlourBatch
+            - paragraph [ref=e98]: Handcrafted artisan cookies made with love and the finest ingredients.
+          - generic [ref=e99]:
+            - heading "Quick Links" [level=3] [ref=e100]
+            - list [ref=e101]:
+              - listitem [ref=e102]:
+                - link "Our Cookies" [ref=e103] [cursor=pointer]:
+                  - /url: /products
+              - listitem [ref=e104]:
+                - link "Track Your Order" [ref=e105] [cursor=pointer]:
+                  - /url: /order-status
+              - listitem [ref=e106]:
+                - link "Cart" [ref=e107] [cursor=pointer]:
+                  - /url: /cart
+          - generic [ref=e108]:
+            - heading "Policies" [level=3] [ref=e109]
+            - list [ref=e110]:
+              - listitem [ref=e111]:
+                - link "Terms of Service" [ref=e112] [cursor=pointer]:
+                  - /url: /policies#terms-of-service
+              - listitem [ref=e113]:
+                - link "Privacy Policy" [ref=e114] [cursor=pointer]:
+                  - /url: /policies#privacy-policy
+              - listitem [ref=e115]:
+                - link "Refund Policy" [ref=e116] [cursor=pointer]:
+                  - /url: /policies#refund-policy
+              - listitem [ref=e117]:
+                - link "Order Cancellations" [ref=e118] [cursor=pointer]:
+                  - /url: /policies#order-cancellations
+              - listitem [ref=e119]:
+                - link "FAQ" [ref=e120] [cursor=pointer]:
+                  - /url: /policies#faq
+              - listitem [ref=e121]:
+                - link "Contact Us" [ref=e122] [cursor=pointer]:
+                  - /url: /policies#contact-us
+          - generic [ref=e123]:
+            - heading "Contact" [level=3] [ref=e124]
+            - list [ref=e125]:
+              - listitem [ref=e126]:
+                - link "hello@flourbatch.com" [ref=e127] [cursor=pointer]:
+                  - /url: mailto:hello@flourbatch.com
+              - listitem [ref=e128]: 19600 144th Ave NE, Woodinville, WA
+            - generic [ref=e129]:
+              - link "Instagram" [ref=e130] [cursor=pointer]:
+                - /url: https://instagram.com/flourbatchbakes/
+                - img [ref=e131]
+              - link "Facebook" [ref=e133] [cursor=pointer]:
+                - /url: https://facebook.com/flourbatch
+                - img [ref=e134]
+        - paragraph [ref=e137]: © 2026 FlourBatch. All rights reserved.
+  - status [ref=e138]:
+    - generic [ref=e140]:
+      - generic [ref=e141]: 0 flavors, 0 cookies — $0.00
+      - button "Add All to Cart" [ref=e142]
+  - button "Open Next.js Dev Tools" [ref=e148] [cursor=pointer]:
+    - img [ref=e149]
+  - alert [ref=e152]: Dark Chocolate Chip | FlourBatch
+```

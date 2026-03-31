@@ -1,0 +1,205 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - link "FlourBatch logo" [ref=e3] [cursor=pointer]:
+      - /url: /
+      - img "FlourBatch logo" [ref=e4]
+    - banner [ref=e5]:
+      - generic [ref=e7]:
+        - navigation [ref=e8]:
+          - link "Home" [ref=e9] [cursor=pointer]:
+            - /url: /
+          - link "Our Story" [ref=e10] [cursor=pointer]:
+            - /url: /our-story
+          - link "Cookies" [ref=e11] [cursor=pointer]:
+            - /url: /products
+          - link "Catering and Events" [ref=e12] [cursor=pointer]:
+            - /url: /bulk-orders
+          - link "Order Status" [ref=e13] [cursor=pointer]:
+            - /url: /order-status
+        - button "Open cart" [ref=e15]:
+          - img [ref=e16]
+    - generic [ref=e19]:
+      - generic [ref=e20]:
+        - heading "Cart (0)" [level=2] [ref=e21]
+        - button "Close cart" [ref=e22]: ×
+      - generic [ref=e24]:
+        - img [ref=e25]
+        - paragraph [ref=e27]: Your cart is empty
+        - link "Browse Cookies" [ref=e28] [cursor=pointer]:
+          - /url: /products
+    - main [ref=e29]:
+      - generic [ref=e30]:
+        - generic [ref=e31]:
+          - heading "Our Cookies" [level=1] [ref=e32]
+          - paragraph [ref=e33]: Handcrafted with love using the finest ingredients
+          - paragraph [ref=e34]:
+            - strong [ref=e35]: "Cookies available by local delivery only to:"
+            - text: Woodinville, Redmond, Bothell, Kirkland, Bellevue.
+        - generic [ref=e36]:
+          - generic [ref=e37]:
+            - link "Dark chocolate chip cookie from Flour Batch" [ref=e38] [cursor=pointer]:
+              - /url: /products/1
+              - img "Dark chocolate chip cookie from Flour Batch" [ref=e42]
+            - generic [ref=e43]:
+              - link "Dark Chocolate Chip" [ref=e44] [cursor=pointer]:
+                - /url: /products/1
+                - heading "Dark Chocolate Chip" [level=3] [ref=e45]
+              - paragraph [ref=e46]: $6.00
+              - generic [ref=e47]:
+                - generic [ref=e48]: wheat
+                - generic [ref=e49]: dairy
+                - generic [ref=e50]: eggs
+                - generic [ref=e51]: soy
+              - generic [ref=e52]:
+                - generic [ref=e53]:
+                  - button "Decrease quantity" [ref=e54]: −
+                  - textbox "Quantity" [ref=e55]: "0"
+                  - button "Increase quantity" [ref=e56]: +
+                - button "Add to Cart" [ref=e57]
+          - generic [ref=e58]:
+            - link "Chocolate peanut butter chip cookie from Flour Batch" [ref=e59] [cursor=pointer]:
+              - /url: /products/2
+              - img "Chocolate peanut butter chip cookie from Flour Batch" [ref=e63]
+            - generic [ref=e64]:
+              - link "Chocolate Peanut Butter Chip" [ref=e65] [cursor=pointer]:
+                - /url: /products/2
+                - heading "Chocolate Peanut Butter Chip" [level=3] [ref=e66]
+              - paragraph [ref=e67]: $6.00
+              - generic [ref=e68]:
+                - generic [ref=e69]: wheat
+                - generic [ref=e70]: dairy
+                - generic [ref=e71]: eggs
+                - generic [ref=e72]: peanuts
+                - generic [ref=e73]: soy
+              - generic [ref=e74]:
+                - generic [ref=e75]:
+                  - button "Decrease quantity" [ref=e76]: −
+                  - textbox "Quantity" [ref=e77]: "0"
+                  - button "Increase quantity" [ref=e78]: +
+                - button "Add to Cart" [ref=e79]
+          - generic [ref=e80]:
+            - link "Churro cookie" [ref=e81] [cursor=pointer]:
+              - /url: /products/3
+              - img "Churro cookie" [ref=e85]
+            - generic [ref=e86]:
+              - link "Churro" [ref=e87] [cursor=pointer]:
+                - /url: /products/3
+                - heading "Churro" [level=3] [ref=e88]
+              - paragraph [ref=e89]: $6.00
+              - generic [ref=e90]:
+                - generic [ref=e91]: wheat
+                - generic [ref=e92]: dairy
+                - generic [ref=e93]: eggs
+              - generic [ref=e94]:
+                - generic [ref=e95]:
+                  - button "Decrease quantity" [ref=e96]: −
+                  - textbox "Quantity" [ref=e97]: "0"
+                  - button "Increase quantity" [ref=e98]: +
+                - button "Add to Cart" [ref=e99]
+          - generic [ref=e100]:
+            - link "Double Dark Chocolate cookie" [ref=e101] [cursor=pointer]:
+              - /url: /products/4
+              - img "Double Dark Chocolate cookie" [ref=e105]
+            - generic [ref=e106]:
+              - link "Double Dark Chocolate" [ref=e107] [cursor=pointer]:
+                - /url: /products/4
+                - heading "Double Dark Chocolate" [level=3] [ref=e108]
+              - paragraph [ref=e109]: $6.00
+              - generic [ref=e110]:
+                - generic [ref=e111]: wheat
+                - generic [ref=e112]: dairy
+                - generic [ref=e113]: eggs
+                - generic [ref=e114]: soy
+              - generic [ref=e115]:
+                - generic [ref=e116]:
+                  - button "Decrease quantity" [ref=e117]: −
+                  - textbox "Quantity" [ref=e118]: "0"
+                  - button "Increase quantity" [ref=e119]: +
+                - button "Add to Cart" [ref=e120]
+          - generic [ref=e121]:
+            - link "Celebration cookie with sprinkles from Flour Batch" [ref=e122] [cursor=pointer]:
+              - /url: /products/5
+              - img "Celebration cookie with sprinkles from Flour Batch" [ref=e126]
+            - generic [ref=e127]:
+              - link "Celebration" [ref=e128] [cursor=pointer]:
+                - /url: /products/5
+                - heading "Celebration" [level=3] [ref=e129]
+              - paragraph [ref=e130]: $6.00
+              - generic [ref=e131]:
+                - generic [ref=e132]: wheat
+                - generic [ref=e133]: dairy
+                - generic [ref=e134]: eggs
+                - generic [ref=e135]: soy
+              - generic [ref=e136]:
+                - generic [ref=e137]:
+                  - button "Decrease quantity" [ref=e138]: −
+                  - textbox "Quantity" [ref=e139]: "0"
+                  - button "Increase quantity" [ref=e140]: +
+                - button "Add to Cart" [ref=e141]
+    - contentinfo [ref=e142]:
+      - generic [ref=e143]:
+        - generic [ref=e144]:
+          - generic [ref=e145]:
+            - generic [ref=e146]:
+              - generic [ref=e148]: FB
+              - generic [ref=e149]: FlourBatch
+            - paragraph [ref=e150]: Handcrafted artisan cookies made with love and the finest ingredients.
+          - generic [ref=e151]:
+            - heading "Quick Links" [level=3] [ref=e152]
+            - list [ref=e153]:
+              - listitem [ref=e154]:
+                - link "Our Cookies" [ref=e155] [cursor=pointer]:
+                  - /url: /products
+              - listitem [ref=e156]:
+                - link "Track Your Order" [ref=e157] [cursor=pointer]:
+                  - /url: /order-status
+              - listitem [ref=e158]:
+                - link "Cart" [ref=e159] [cursor=pointer]:
+                  - /url: /cart
+          - generic [ref=e160]:
+            - heading "Policies" [level=3] [ref=e161]
+            - list [ref=e162]:
+              - listitem [ref=e163]:
+                - link "Terms of Service" [ref=e164] [cursor=pointer]:
+                  - /url: /policies#terms-of-service
+              - listitem [ref=e165]:
+                - link "Privacy Policy" [ref=e166] [cursor=pointer]:
+                  - /url: /policies#privacy-policy
+              - listitem [ref=e167]:
+                - link "Refund Policy" [ref=e168] [cursor=pointer]:
+                  - /url: /policies#refund-policy
+              - listitem [ref=e169]:
+                - link "Order Cancellations" [ref=e170] [cursor=pointer]:
+                  - /url: /policies#order-cancellations
+              - listitem [ref=e171]:
+                - link "FAQ" [ref=e172] [cursor=pointer]:
+                  - /url: /policies#faq
+              - listitem [ref=e173]:
+                - link "Contact Us" [ref=e174] [cursor=pointer]:
+                  - /url: /policies#contact-us
+          - generic [ref=e175]:
+            - heading "Contact" [level=3] [ref=e176]
+            - list [ref=e177]:
+              - listitem [ref=e178]:
+                - link "hello@flourbatch.com" [ref=e179] [cursor=pointer]:
+                  - /url: mailto:hello@flourbatch.com
+              - listitem [ref=e180]: 19600 144th Ave NE, Woodinville, WA
+            - generic [ref=e181]:
+              - link "Instagram" [ref=e182] [cursor=pointer]:
+                - /url: https://instagram.com/flourbatchbakes/
+                - img [ref=e183]
+              - link "Facebook" [ref=e185] [cursor=pointer]:
+                - /url: https://facebook.com/flourbatch
+                - img [ref=e186]
+        - paragraph [ref=e189]: © 2026 FlourBatch. All rights reserved.
+  - status [ref=e190]:
+    - generic [ref=e192]:
+      - generic [ref=e193]: 0 flavors, 0 cookies — $0.00
+      - button "Add All to Cart" [ref=e194]
+  - button "Open Next.js Dev Tools" [ref=e200] [cursor=pointer]:
+    - img [ref=e201]
+  - alert [ref=e204]
+```

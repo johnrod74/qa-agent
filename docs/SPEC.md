@@ -644,18 +644,29 @@ Generated after each test phase:
 
 ### 8.2 Artifacts
 
+### 8.2 Artifact Cleanup
+
+Artifacts are wiped at the start of each test run — only the latest run's screenshots, traces, and reports survive. This prevents unbounded disk growth from repeated test cycles. The cleanup runs in the Playwright config's module scope (before any tests execute) and removes:
+- `artifacts/` (screenshots)
+- `artifacts/html-report/` (Playwright HTML report)
+- `test-results/` (Playwright internal results)
+
+For CI environments, upload artifacts to GitHub Actions (auto-expire after 30 days) before the cleanup runs on the next invocation.
+
+### 8.3 Artifact Structure
+
 Each test run produces:
 ```
 artifacts/
-  2026-03-31T14-22-00/
-    report.html           # Playwright HTML report
-    summary.md            # Markdown summary
-    screenshots/          # Failure screenshots
-      CF-1-failure.png
-      S-1.4.9-failure.png
-    traces/               # Playwright traces (zip)
-      CF-1-trace.zip
-    videos/               # Test recordings (if enabled)
+  html-report/
+    index.html            # Playwright HTML report
+  HP-1.png                # Per-test screenshots
+  PB-1.png
+  ...
+test-results/             # Playwright traces + failure screenshots
+  test-name-desktop/
+    test-failed-1.png
+    trace.zip
 ```
 
 ---
