@@ -1,0 +1,31 @@
+{
+  "name": "qa-agent",
+  "version": "0.1.0",
+  "description": "Autonomous AI-driven E2E testing agent — discovers bugs, files issues, coordinates fixes",
+  "type": "module",
+  "bin": {
+    "qa-agent": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/cli.ts",
+    "test": "vitest",
+    "lint": "eslint src/"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "@playwright/test": "^1.58.0",
+    "commander": "^13.0.0",
+    "dotenv": "^16.5.0",
+    "handlebars": "^4.7.8",
+    "pino": "^9.6.0",
+    "pino-pretty": "^13.0.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0",
+    "tsx": "^4.19.0",
+    "vitest": "^3.0.0"
+  }
+}

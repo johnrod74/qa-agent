@@ -1,0 +1,43 @@
+## Bug: {{testId}} — {{title}}
+
+**Area:** {{area}}
+**Priority:** {{priority}}
+**Type:** {{type}}
+**Viewport:** {{viewport}}
+
+### Steps to Reproduce
+{{#each steps}}
+{{@index}}. {{this}}
+{{/each}}
+
+### Expected
+{{expected}}
+
+### Actual
+{{actual}}
+
+{{#if screenshotPath}}
+### Screenshot
+![failure]({{screenshotPath}})
+{{/if}}
+
+{{#if consoleErrors}}
+### Console Errors
+```
+{{#each consoleErrors}}
+{{this}}
+{{/each}}
+```
+{{/if}}
+
+### Test Reference
+`{{testFile}}:{{testLine}}` — Test ID: `{{testId}}`
+
+### Environment
+- URL: {{baseUrl}}
+- Viewport: {{viewportWidth}}x{{viewportHeight}}
+- Browser: {{browser}}
+- Timestamp: {{timestamp}}
+
+---
+*Filed automatically by [QA Agent](https://github.com/{{githubRepo}})*

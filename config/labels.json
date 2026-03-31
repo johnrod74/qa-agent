@@ -1,0 +1,35 @@
+{
+  "labels": [
+    { "name": "qa-agent", "color": "7057ff", "description": "Filed by QA Agent" },
+
+    { "name": "area:storefront", "color": "0075ca", "description": "Customer-facing pages" },
+    { "name": "area:admin", "color": "0075ca", "description": "Admin dashboard" },
+    { "name": "area:checkout", "color": "0075ca", "description": "Checkout flow" },
+    { "name": "area:cart", "color": "0075ca", "description": "Cart system" },
+    { "name": "area:auth", "color": "0075ca", "description": "Authentication" },
+    { "name": "area:api", "color": "0075ca", "description": "API endpoints" },
+    { "name": "area:payments", "color": "0075ca", "description": "Stripe payments" },
+    { "name": "area:inventory", "color": "0075ca", "description": "Inventory management" },
+    { "name": "area:fulfillment", "color": "0075ca", "description": "Fulfillment slots" },
+
+    { "name": "priority:P0", "color": "b60205", "description": "Critical — blocks core flow" },
+    { "name": "priority:P1", "color": "d93f0b", "description": "High — major feature broken" },
+    { "name": "priority:P2", "color": "fbca04", "description": "Medium — minor bug" },
+    { "name": "priority:P3", "color": "0e8a16", "description": "Low — cosmetic or edge case" },
+
+    { "name": "type:functional", "color": "c5def5", "description": "Feature does not work correctly" },
+    { "name": "type:validation", "color": "c5def5", "description": "Input validation issue" },
+    { "name": "type:ux", "color": "c5def5", "description": "User experience issue" },
+    { "name": "type:accessibility", "color": "c5def5", "description": "Accessibility problem" },
+    { "name": "type:integration", "color": "c5def5", "description": "Cross-system issue" },
+    { "name": "type:regression", "color": "c5def5", "description": "Previously working, now broken" },
+
+    { "name": "status:new", "color": "ededed", "description": "Just discovered" },
+    { "name": "status:fixing", "color": "ededed", "description": "Fix agent working on it" },
+    { "name": "status:fix-ready", "color": "ededed", "description": "Fix branch ready for validation" },
+    { "name": "status:validated", "color": "ededed", "description": "Fix verified by validator" },
+
+    { "name": "meta:flaky", "color": "e4e669", "description": "Test passes intermittently" },
+    { "name": "meta:test-fix-needed", "color": "e4e669", "description": "Test itself needs fixing" }
+  ]
+}
