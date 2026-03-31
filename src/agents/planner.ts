@@ -5,7 +5,7 @@
  * Spec reference: Section 4.1 (Plan Phase)
  */
 
-import { writeFileSync, mkdirSync, readFileSync, existsSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import Anthropic from '@anthropic-ai/sdk';
 import type { QAAgentConfig } from '../core/config.js';
@@ -14,6 +14,7 @@ import type { AgentFn, PlanResult } from '../orchestrator.js';
 import { withRetry } from '../core/api-retry.js';
 import { parseTestPlanMarkdown } from '../core/test-plan.js';
 import type { TestPlan } from '../core/test-plan.js';
+import { safeReadFile, writeFileSafe } from '../core/fs-utils.js';
 
 // ---------------------------------------------------------------------------
 // PlannerAgent class
@@ -56,16 +57,15 @@ export class PlannerAgent {
 
     // Write the Markdown plan
     const plansDir = this.config.output.plansDir;
-    mkdirSync(plansDir, { recursive: true });
     const planPath = join(plansDir, 'test-plan.md');
-    writeFileSync(planPath, planMarkdown, 'utf-8');
+    writeFileSafe(planPath, planMarkdown);
 
     // Parse into structured JSON and validate
     const plan = parseTestPlanMarkdown(planMarkdown);
 
     // Write the JSON version for deterministic downstream consumption
     const jsonPath = join(plansDir, 'test-plan.json');
-    writeFileSync(jsonPath, JSON.stringify(plan, null, 2), 'utf-8');
+    writeFileSafe(jsonPath, JSON.stringify(plan, null, 2));
 
     return { markdown: planMarkdown, plan };
   }
@@ -193,7 +193,7 @@ Generated: [date]
       sections.push('## Specification Documents\n');
       for (const specFile of this.config.context.specFiles) {
         if (existsSync(specFile)) {
-          const content = readFileSync(specFile, 'utf-8');
+          const content = safeReadFile(specFile);
           // Truncate very large spec files
           const truncated = content.length > 20000 ? content.slice(0, 20000) + '\n\n... (truncated)' : content;
           sections.push(`### ${specFile}\n`);
@@ -331,7 +331,7 @@ export const planAgent: AgentFn<PlanResult> = async (ctx) => {
   if (ctx.config.context.testPlanFiles && ctx.config.context.testPlanFiles.length > 0) {
     for (const planFile of ctx.config.context.testPlanFiles) {
       if (existsSync(planFile)) {
-        existingPlan = (existingPlan ?? '') + readFileSync(planFile, 'utf-8') + '\n\n';
+        existingPlan = (existingPlan ?? '') + safeReadFile(planFile) + '\n\n';
       }
     }
   }

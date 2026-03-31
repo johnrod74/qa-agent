@@ -5,9 +5,9 @@
  * Spec reference: Section 4.2 (Generate Phase — Fixtures)
  */
 
-import { writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import type { QAAgentConfig } from '../core/config.js';
+import { writeFileSafe } from '../core/fs-utils.js';
 
 // ---------------------------------------------------------------------------
 // Auth setup generator
@@ -308,32 +308,30 @@ function generatePlaywrightConfig(config: QAAgentConfig): string {
  */
 export async function generateFixtures(config: QAAgentConfig): Promise<string[]> {
   const testsDir = config.output.testsDir;
-  mkdirSync(testsDir, { recursive: true });
-
   const generatedFiles: string[] = [];
 
   // Auth setup
   const authContent = generateAuthSetup(config);
   const authPath = join(testsDir, 'auth.setup.ts');
-  writeFileSync(authPath, authContent, 'utf-8');
+  writeFileSafe(authPath, authContent);
   generatedFiles.push(authPath);
 
   // Global setup
   const globalSetupContent = generateGlobalSetup(config);
   const globalSetupPath = join(testsDir, 'global-setup.ts');
-  writeFileSync(globalSetupPath, globalSetupContent, 'utf-8');
+  writeFileSafe(globalSetupPath, globalSetupContent);
   generatedFiles.push(globalSetupPath);
 
   // Global teardown
   const globalTeardownContent = generateGlobalTeardown(config);
   const globalTeardownPath = join(testsDir, 'global-teardown.ts');
-  writeFileSync(globalTeardownPath, globalTeardownContent, 'utf-8');
+  writeFileSafe(globalTeardownPath, globalTeardownContent);
   generatedFiles.push(globalTeardownPath);
 
   // Playwright config
   const playwrightConfigContent = generatePlaywrightConfig(config);
   const playwrightConfigPath = join(testsDir, 'playwright.config.ts');
-  writeFileSync(playwrightConfigPath, playwrightConfigContent, 'utf-8');
+  writeFileSafe(playwrightConfigPath, playwrightConfigContent);
   generatedFiles.push(playwrightConfigPath);
 
   return generatedFiles;

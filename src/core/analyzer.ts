@@ -5,9 +5,10 @@
  * Spec reference: Section 5 (App Analyzer)
  */
 
-import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, basename, extname, dirname } from 'node:path';
 import type { QAAgentConfig } from './config.js';
+import { safeReadFile } from './fs-utils.js';
 
 // ---------------------------------------------------------------------------
 // Exported interfaces (spec §5.1)
@@ -104,6 +105,25 @@ const MAX_FILES = 500;
 const MAX_FILE_SIZE_BYTES = 100_000; // 100 KB
 
 // ---------------------------------------------------------------------------
+// Pre-compiled regex patterns (avoid re-creation on every call)
+// ---------------------------------------------------------------------------
+
+/** Patterns for detecting HTTP method exports in route files. */
+const HTTP_METHOD_PATTERNS: Record<string, RegExp> = {
+  GET: /export\s+(?:async\s+)?(?:function|const)\s+GET\b/,
+  POST: /export\s+(?:async\s+)?(?:function|const)\s+POST\b/,
+  PUT: /export\s+(?:async\s+)?(?:function|const)\s+PUT\b/,
+  DELETE: /export\s+(?:async\s+)?(?:function|const)\s+DELETE\b/,
+  PATCH: /export\s+(?:async\s+)?(?:function|const)\s+PATCH\b/,
+};
+
+/** Pattern for matching Zod schema definitions. */
+const ZOD_SCHEMA_PATTERN = /(?:const|let|export\s+(?:const|let))\s+(\w+)\s*=\s*z\.object\(\{([^}]*(?:\{[^}]*\}[^}]*)*)\}\)/gs;
+
+/** Pattern for matching individual Zod field definitions inside a schema. */
+const ZOD_FIELD_PATTERN = /(\w+)\s*:\s*z\.(\w+)\(([^)]*)\)((?:\.\w+\([^)]*\))*)/g;
+
+// ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
 
@@ -124,15 +144,6 @@ function walkDir(dir: string, filter?: (file: string) => boolean): string[] {
     }
   }
   return results;
-}
-
-/** Read a file and return its content, or empty string on error. */
-function safeReadFile(filePath: string): string {
-  try {
-    return readFileSync(filePath, 'utf-8');
-  } catch {
-    return '';
-  }
 }
 
 /** Convert a Next.js App Router file path to a URL route path. */
@@ -167,9 +178,7 @@ function detectHttpMethods(content: string): Array<'GET' | 'POST' | 'PUT' | 'DEL
   const methods: Array<'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'> = [];
   const httpMethods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'] as const;
   for (const method of httpMethods) {
-    // Match export async function GET | export function GET | export const GET
-    const pattern = new RegExp(`export\\s+(?:async\\s+)?(?:function|const)\\s+${method}\\b`);
-    if (pattern.test(content)) {
+    if (HTTP_METHOD_PATTERNS[method].test(content)) {
       methods.push(method);
     }
   }
@@ -190,20 +199,20 @@ function zodTypeToFieldType(zodType: string): FormField['type'] {
 function extractZodForms(content: string, filePath: string): Form[] {
   const forms: Form[] = [];
 
-  // Match z.object({ ... }) blocks - find schema definitions
-  const schemaPattern = /(?:const|let|export\s+(?:const|let))\s+(\w+)\s*=\s*z\.object\(\{([^}]*(?:\{[^}]*\}[^}]*)*)\}\)/gs;
+  // Reset lastIndex for the global regex before each use
+  ZOD_SCHEMA_PATTERN.lastIndex = 0;
   let schemaMatch: RegExpExecArray | null;
 
-  while ((schemaMatch = schemaPattern.exec(content)) !== null) {
+  while ((schemaMatch = ZOD_SCHEMA_PATTERN.exec(content)) !== null) {
     const schemaName = schemaMatch[1];
     const schemaBody = schemaMatch[2];
     const fields: FormField[] = [];
 
-    // Match individual field definitions: fieldName: z.string().min(3).max(100)
-    const fieldPattern = /(\w+)\s*:\s*z\.(\w+)\(([^)]*)\)((?:\.\w+\([^)]*\))*)/g;
+    // Reset lastIndex for the global field regex before each schema body
+    ZOD_FIELD_PATTERN.lastIndex = 0;
     let fieldMatch: RegExpExecArray | null;
 
-    while ((fieldMatch = fieldPattern.exec(schemaBody)) !== null) {
+    while ((fieldMatch = ZOD_FIELD_PATTERN.exec(schemaBody)) !== null) {
       const fieldName = fieldMatch[1];
       const zodBaseType = fieldMatch[2];
       const chainedMethods = fieldMatch[4] || '';
@@ -562,10 +571,11 @@ export async function analyzeApp(config: QAAgentConfig): Promise<AppAnalysis> {
             filePath: file,
           });
         }
+        const apiParams = extractParams(routePath);
         routes.push({
           path: routePath,
           method: 'api',
-          ...(extractParams(routePath) ? { params: extractParams(routePath) } : {}),
+          ...(apiParams ? { params: apiParams } : {}),
         });
       }
 

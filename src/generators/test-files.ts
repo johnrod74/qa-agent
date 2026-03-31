@@ -5,11 +5,11 @@
  * Spec reference: Section 4.2 (Generate Phase — Test Files)
  */
 
-import { writeFileSync, mkdirSync } from 'node:fs';
 import { join, relative, basename } from 'node:path';
 import type { QAAgentConfig } from '../core/config.js';
 import { parseTestPlanMarkdown } from '../core/test-plan.js';
 import type { TestScenario } from '../core/test-plan.js';
+import { writeFileSafe } from '../core/fs-utils.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -222,7 +222,6 @@ export async function generateTestFiles(
   config: QAAgentConfig,
 ): Promise<string[]> {
   const testsDir = config.output.testsDir;
-  mkdirSync(testsDir, { recursive: true });
 
   // Parse the test plan using the structured JSON intermediate format
   const testPlan = parseTestPlanMarkdown(planMarkdown);
@@ -241,7 +240,7 @@ export async function generateTestFiles(
     const content = generateSpecFile(group, pageObjectPaths, config);
     const filePath = join(testsDir, fileName);
 
-    writeFileSync(filePath, content, 'utf-8');
+    writeFileSafe(filePath, content);
     generatedFiles.push(filePath);
   }
 

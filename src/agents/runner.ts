@@ -1,16 +1,13 @@
-import { execFile as execFileCb } from 'node:child_process';
-import { promisify } from 'node:util';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import type { ChildProcess } from 'node:child_process';
 import { spawn } from 'node:child_process';
 import type { AgentFn, TestResult } from '../orchestrator.js';
 import type { QAAgentConfig } from '../core/config.js';
+import { execFile } from '../core/exec.js';
 import { GitHubReporter } from '../reporters/github.js';
 import { generateMarkdownReport } from '../reporters/markdown.js';
 import { generateHtmlReport } from '../reporters/html.js';
-
-const execFile = promisify(execFileCb);
 
 // ---------------------------------------------------------------------------
 // Public interfaces
@@ -119,23 +116,24 @@ export class TestRunner {
     logger.info('Pre-flight: checking app availability');
     let appProcess: ChildProcess | null = null;
 
-    const isReachable = await this.healthCheck(config);
+    const healthUrl = config.app.baseUrl + (config.app.healthCheckPath ?? '/');
+    const isReachable = await this.pollUrl(healthUrl, 3, 2000);
 
     if (!isReachable) {
       if (config.app.startCommand) {
         logger.info({ cmd: config.app.startCommand }, 'App not reachable — starting via startCommand');
         appProcess = this.spawnApp(config);
         // Wait for app to become reachable
-        const started = await this.waitForApp(config);
+        const started = await this.pollUrl(healthUrl, 30, 2000);
         if (!started) {
           throw new Error(
-            `App failed to become reachable at ${config.app.baseUrl}${config.app.healthCheckPath ?? '/'} after starting`,
+            `App failed to become reachable at ${healthUrl} after starting`,
           );
         }
         logger.info('App started and reachable');
       } else {
         throw new Error(
-          `App not reachable at ${config.app.baseUrl}${config.app.healthCheckPath ?? '/'} and no startCommand configured`,
+          `App not reachable at ${healthUrl} and no startCommand configured`,
         );
       }
     } else {
@@ -351,43 +349,23 @@ export class TestRunner {
   // -------------------------------------------------------------------------
 
   /**
-   * HTTP GET to baseUrl + healthCheckPath, retry up to 3 times with 2s delay.
+   * Poll a URL until it returns an OK response.
+   *
+   * @param url          - The URL to poll.
+   * @param maxAttempts  - Maximum number of attempts.
+   * @param delayMs      - Milliseconds to wait between attempts.
    */
-  private async healthCheck(config: QAAgentConfig): Promise<boolean> {
-    const url = config.app.baseUrl + (config.app.healthCheckPath ?? '/');
-    const maxRetries = 3;
-    const delayMs = 2000;
-
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+  private async pollUrl(url: string, maxAttempts: number, delayMs: number): Promise<boolean> {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         const response = await fetch(url, { method: 'GET', signal: AbortSignal.timeout(5000) });
         if (response.ok) return true;
       } catch {
         // Connection refused or timeout — retry
       }
-      if (attempt < maxRetries) {
+      if (attempt < maxAttempts) {
         await new Promise((r) => setTimeout(r, delayMs));
       }
-    }
-    return false;
-  }
-
-  /**
-   * Wait for the app to become reachable after spawning, with longer timeout.
-   */
-  private async waitForApp(config: QAAgentConfig): Promise<boolean> {
-    const url = config.app.baseUrl + (config.app.healthCheckPath ?? '/');
-    const maxAttempts = 30; // 60 seconds total
-    const delayMs = 2000;
-
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      try {
-        const response = await fetch(url, { method: 'GET', signal: AbortSignal.timeout(5000) });
-        if (response.ok) return true;
-      } catch {
-        // Not ready yet
-      }
-      await new Promise((r) => setTimeout(r, delayMs));
     }
     return false;
   }
@@ -566,14 +544,18 @@ export const testAgent: AgentFn<TestResult> = async (ctx) => {
   const runner = new TestRunner();
   const result = await runner.run(ctx.config, ctx.logger);
 
-  // Map TestRunResult to the TestResult interface expected by orchestrator
+  // Map TestRunResult to the TestResult interface expected by orchestrator.
+  // `duplicates` = failures that matched an existing open issue and were
+  // not filed as new issues, i.e. total failures minus newly created issues.
+  const newIssues = result.issues.length;
+  const totalFailures = result.failed + result.flaky;
   return {
     total: result.total,
     passed: result.passed,
     failed: result.failed,
     flaky: result.flaky,
-    issuesCreated: result.issues.length,
-    duplicates: result.total - result.passed - result.failed - result.flaky - result.skipped,
+    issuesCreated: newIssues,
+    duplicates: totalFailures - newIssues,
     issueIds: result.issues.map((i) => i.issueNumber),
   };
 };

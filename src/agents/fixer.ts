@@ -1,9 +1,6 @@
-import { execFile as execFileCb } from 'node:child_process';
-import { promisify } from 'node:util';
 import type { AgentFn, FixResult } from '../orchestrator.js';
 import type { QAAgentConfig } from '../core/config.js';
-
-const execFile = promisify(execFileCb);
+import { execFile } from '../core/exec.js';
 
 // ---------------------------------------------------------------------------
 // Public interfaces

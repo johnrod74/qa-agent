@@ -244,7 +244,9 @@ describe('StateManager', () => {
         url: 'https://github.com/o/r/issues/10',
       });
 
-      // Create a new manager pointing at the same directory
+      // Save before loading from a second manager
+      sm.save();
+
       const sm2 = new StateManager(ARTIFACTS_DIR);
       const loaded = sm2.load();
 

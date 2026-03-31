@@ -1,11 +1,8 @@
-import { execFile as execFileCb } from 'node:child_process';
-import { promisify } from 'node:util';
 import { readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Handlebars from 'handlebars';
-
-const execFile = promisify(execFileCb);
+import { execFile } from '../core/exec.js';
 
 // ---------------------------------------------------------------------------
 // Resolve paths relative to this file (for templates and config)

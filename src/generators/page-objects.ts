@@ -5,10 +5,10 @@
  * Spec reference: Section 4.2 (Generate Phase — Page Objects)
  */
 
-import { writeFileSync, mkdirSync } from 'node:fs';
 import { join, basename } from 'node:path';
 import type { QAAgentConfig } from '../core/config.js';
 import type { AppAnalysis, Route, Form, FormField } from '../core/analyzer.js';
+import { writeFileSafe } from '../core/fs-utils.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -296,7 +296,6 @@ export async function generatePageObjects(
   config: QAAgentConfig,
 ): Promise<string[]> {
   const outDir = config.output.pageObjectsDir;
-  mkdirSync(outDir, { recursive: true });
 
   const generatedFiles: string[] = [];
   const pageRoutes = analysis.routes.filter((r) => r.method === 'page');
@@ -318,7 +317,7 @@ export async function generatePageObjects(
     const content = generatePageObjectClass(route, associatedForms, config.app.baseUrl);
     const filePath = join(outDir, fileName);
 
-    writeFileSync(filePath, content, 'utf-8');
+    writeFileSafe(filePath, content);
     generatedFiles.push(filePath);
   }
 
@@ -333,7 +332,7 @@ export async function generatePageObjects(
       indexLines.push(`export * from './${name}.js';`);
     }
     const indexPath = join(outDir, 'index.ts');
-    writeFileSync(indexPath, indexLines.join('\n') + '\n', 'utf-8');
+    writeFileSafe(indexPath, indexLines.join('\n') + '\n');
     generatedFiles.push(indexPath);
   }
 

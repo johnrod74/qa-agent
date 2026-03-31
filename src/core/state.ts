@@ -1,6 +1,7 @@
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { safeReadFile, writeFileSafe } from './fs-utils.js';
 
 // ---------------------------------------------------------------------------
 // Run state types
@@ -79,6 +80,7 @@ const STATE_FILENAME = '.qa-state.json';
 export class StateManager {
   private readonly statePath: string;
   private current: RunState | null = null;
+  private dirty = false;
 
   constructor(private readonly artifactsDir: string) {
     this.statePath = join(artifactsDir, STATE_FILENAME);
@@ -114,8 +116,9 @@ export class StateManager {
     if (!existsSync(this.statePath)) {
       return null;
     }
+    const raw = safeReadFile(this.statePath);
+    if (!raw) return null;
     try {
-      const raw = readFileSync(this.statePath, 'utf-8');
       this.current = JSON.parse(raw) as RunState;
       return this.current;
     } catch {
@@ -129,10 +132,8 @@ export class StateManager {
    */
   save(): void {
     if (!this.current) return;
-    if (!existsSync(this.artifactsDir)) {
-      mkdirSync(this.artifactsDir, { recursive: true });
-    }
-    writeFileSync(this.statePath, JSON.stringify(this.current, null, 2), 'utf-8');
+    this.dirty = false;
+    writeFileSafe(this.statePath, JSON.stringify(this.current, null, 2));
   }
 
   // -------------------------------------------------------------------------
@@ -164,30 +165,38 @@ export class StateManager {
   // -------------------------------------------------------------------------
 
   /**
-   * Append a test result entry and persist.
+   * Append a test result entry. Marks state as dirty; call `save()`
+   * after the batch of additions is complete.
    */
   addTestResult(result: TestResultEntry): void {
     if (!this.current) return;
     this.current.testResults.push(result);
-    this.save();
+    this.dirty = true;
   }
 
   /**
-   * Record a GitHub issue created by the agent and persist.
+   * Record a GitHub issue created by the agent. Marks state as dirty;
+   * call `save()` after the batch of additions is complete.
    */
   addIssue(issue: IssueEntry): void {
     if (!this.current) return;
     this.current.issuesCreated.push(issue);
-    this.save();
+    this.dirty = true;
   }
 
   /**
-   * Record a fix branch created by the fixer agent and persist.
+   * Record a fix branch created by the fixer agent. Marks state as dirty;
+   * call `save()` after the batch of additions is complete.
    */
   addFixBranch(branch: FixBranchEntry): void {
     if (!this.current) return;
     this.current.fixBranches.push(branch);
-    this.save();
+    this.dirty = true;
+  }
+
+  /** Returns true if there are unsaved changes. */
+  get isDirty(): boolean {
+    return this.dirty;
   }
 
   // -------------------------------------------------------------------------
