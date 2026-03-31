@@ -1,0 +1,328 @@
+/**
+ * Test File Generator — parses the Markdown test plan and produces
+ * Playwright spec files grouped by area.
+ *
+ * Spec reference: Section 4.2 (Generate Phase — Test Files)
+ */
+
+import { writeFileSync, mkdirSync } from 'node:fs';
+import { join, relative, basename } from 'node:path';
+import type { QAAgentConfig } from '../core/config.js';
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+interface TestScenario {
+  id: string;
+  scenario: string;
+  priority: string;
+  type: string;
+  viewport: string;
+  preconditions: string;
+  area: string;
+  subArea: string;
+}
+
+interface AreaGroup {
+  area: string;
+  subArea: string;
+  scenarios: TestScenario[];
+}
+
+// ---------------------------------------------------------------------------
+// Markdown parsing
+// ---------------------------------------------------------------------------
+
+/**
+ * Parse the Markdown test plan and extract all test scenarios from tables.
+ *
+ * Expects the format:
+ * ```
+ * ## Area: Checkout Flow
+ * ### Sub-area: Fulfillment Selection
+ * | ID | Scenario | Priority | Type | Viewport | Preconditions |
+ * |----|----------|----------|------|----------|---------------|
+ * | CF-1 | Some scenario | P0 | functional | both | Cart has items |
+ * ```
+ */
+function parseTestPlan(markdown: string): TestScenario[] {
+  const scenarios: TestScenario[] = [];
+  const lines = markdown.split('\n');
+
+  let currentArea = 'General';
+  let currentSubArea = 'Default';
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+
+    // Track area headers: ## Area: XYZ
+    const areaMatch = line.match(/^##\s+Area:\s*(.+)/i);
+    if (areaMatch) {
+      currentArea = areaMatch[1].trim();
+      currentSubArea = 'Default';
+      continue;
+    }
+
+    // Track sub-area headers: ### Sub-area: XYZ
+    const subAreaMatch = line.match(/^###\s+(?:Sub-area|Subarea):\s*(.+)/i);
+    if (subAreaMatch) {
+      currentSubArea = subAreaMatch[1].trim();
+      continue;
+    }
+
+    // Parse table rows (skip header and separator rows)
+    if (!line.startsWith('|')) continue;
+    // Skip header row (contains "ID" or "Scenario")
+    if (/\|\s*ID\s*\|/i.test(line)) continue;
+    // Skip separator rows (contain only |, -, and spaces)
+    if (/^\|[\s\-|]+\|$/.test(line)) continue;
+
+    // Parse the table row
+    const cells = line
+      .split('|')
+      .map((c) => c.trim())
+      .filter((c) => c.length > 0);
+
+    if (cells.length >= 6) {
+      scenarios.push({
+        id: cells[0],
+        scenario: cells[1],
+        priority: cells[2],
+        type: cells[3],
+        viewport: cells[4],
+        preconditions: cells[5],
+        area: currentArea,
+        subArea: currentSubArea,
+      });
+    }
+  }
+
+  return scenarios;
+}
+
+/**
+ * Group scenarios by area and sub-area for spec file organization.
+ */
+function groupByArea(scenarios: TestScenario[]): AreaGroup[] {
+  const groups = new Map<string, AreaGroup>();
+
+  for (const scenario of scenarios) {
+    const key = `${scenario.area}::${scenario.subArea}`;
+    if (!groups.has(key)) {
+      groups.set(key, { area: scenario.area, subArea: scenario.subArea, scenarios: [] });
+    }
+    groups.get(key)!.scenarios.push(scenario);
+  }
+
+  return Array.from(groups.values());
+}
+
+// ---------------------------------------------------------------------------
+// Code generation
+// ---------------------------------------------------------------------------
+
+/** Convert an area name to a safe file name. */
+function areaToFileName(area: string, subArea: string): string {
+  const areaSlug = area
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+  const subSlug = subArea === 'Default'
+    ? ''
+    : '-' + subArea.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  return `${areaSlug}${subSlug}.spec.ts`;
+}
+
+/** Find the page object import path for a scenario based on area name. */
+function findPageObjectImport(
+  area: string,
+  pageObjectPaths: string[],
+  testsDir: string,
+  pageObjectsDir: string,
+): { importPath: string; className: string } | null {
+  // Try to match a page object file name to the area name
+  const areaSlug = area.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  const areaWords = area.toLowerCase().split(/\s+/);
+
+  for (const poPath of pageObjectPaths) {
+    const poFileName = basename(poPath, '.ts').replace('.page', '');
+    const poNameLower = poFileName.toLowerCase();
+
+    // Check if any area word matches the page object name
+    const matches = areaWords.some(
+      (word) => poNameLower.includes(word) || word.includes(poNameLower),
+    );
+
+    if (matches) {
+      const relPath = relative(testsDir, poPath).replace(/\.ts$/, '.js').replace(/\\/g, '/');
+      const importPath = relPath.startsWith('.') ? relPath : './' + relPath;
+      // Derive class name from file name
+      const className = poFileName
+        .split('-')
+        .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+        .join('') + 'Page';
+      return { importPath, className };
+    }
+  }
+
+  return null;
+}
+
+/** Generate a Playwright spec file for a group of scenarios. */
+function generateSpecFile(
+  group: AreaGroup,
+  pageObjectPaths: string[],
+  config: QAAgentConfig,
+): string {
+  const lines: string[] = [];
+  const testsDir = config.output.testsDir;
+  const pageObjectsDir = config.output.pageObjectsDir;
+
+  // Imports
+  lines.push(`import { test, expect } from '@playwright/test';`);
+
+  // Try to find a matching page object
+  const po = findPageObjectImport(group.area, pageObjectPaths, testsDir, pageObjectsDir);
+  if (po) {
+    lines.push(`import { ${po.className} } from '${po.importPath}';`);
+  }
+  lines.push('');
+
+  // Group description
+  const describeLabel = group.subArea !== 'Default'
+    ? `${group.area} — ${group.subArea}`
+    : group.area;
+
+  lines.push(`test.describe('${escapeQuotes(describeLabel)}', () => {`);
+
+  // Add page object variable if available
+  if (po) {
+    lines.push(`  let pageObject: ${po.className};`);
+    lines.push('');
+    lines.push(`  test.beforeEach(async ({ page }) => {`);
+    lines.push(`    pageObject = new ${po.className}(page);`);
+    lines.push(`    await pageObject.goto();`);
+    lines.push(`  });`);
+  } else {
+    lines.push(`  test.beforeEach(async ({ page }) => {`);
+    lines.push(`    // Navigate to the relevant page`);
+    lines.push(`    // TODO: Update with the correct URL for this area`);
+    lines.push(`  });`);
+  }
+  lines.push('');
+
+  // Generate test blocks for each scenario
+  for (const scenario of group.scenarios) {
+    // Add viewport annotation for mobile-only or desktop-only tests
+    if (scenario.viewport.toLowerCase() === 'mobile') {
+      lines.push(`  test('${escapeQuotes(scenario.id)}: ${escapeQuotes(scenario.scenario)}', async ({ page }) => {`);
+      lines.push(`    // Viewport: mobile only`);
+      lines.push(`    await page.setViewportSize({ width: ${getMobileWidth(config)}, height: ${getMobileHeight(config)} });`);
+    } else if (scenario.viewport.toLowerCase() === 'desktop') {
+      lines.push(`  test('${escapeQuotes(scenario.id)}: ${escapeQuotes(scenario.scenario)}', async ({ page }) => {`);
+      lines.push(`    // Viewport: desktop only`);
+    } else {
+      lines.push(`  test('${escapeQuotes(scenario.id)}: ${escapeQuotes(scenario.scenario)}', async ({ page }) => {`);
+    }
+
+    // Priority and type as comments
+    lines.push(`    // Priority: ${scenario.priority} | Type: ${scenario.type}`);
+
+    // Preconditions
+    if (scenario.preconditions && scenario.preconditions !== '—' && scenario.preconditions.toLowerCase() !== 'none') {
+      lines.push(`    // Preconditions: ${scenario.preconditions}`);
+    }
+
+    lines.push('');
+    lines.push(`    // TODO: Implement test steps for "${scenario.scenario}"`);
+
+    // Generate basic test structure based on type
+    if (scenario.type.toLowerCase() === 'validation') {
+      lines.push(`    // 1. Attempt invalid action`);
+      lines.push(`    // 2. Verify error message appears`);
+      lines.push(`    // 3. Verify form/action was not submitted`);
+    } else if (scenario.type.toLowerCase() === 'functional') {
+      lines.push(`    // 1. Set up preconditions`);
+      lines.push(`    // 2. Perform the action`);
+      lines.push(`    // 3. Verify expected outcome`);
+    } else if (scenario.type.toLowerCase() === 'ux') {
+      lines.push(`    // 1. Navigate to the page`);
+      lines.push(`    // 2. Verify visual/interaction elements`);
+      lines.push(`    // 3. Take screenshot for visual comparison`);
+      lines.push(`    await page.screenshot({ path: 'screenshots/${scenario.id}.png' });`);
+    } else if (scenario.type.toLowerCase() === 'accessibility') {
+      lines.push(`    // 1. Navigate to the page`);
+      lines.push(`    // 2. Verify keyboard navigation`);
+      lines.push(`    // 3. Verify ARIA attributes`);
+      lines.push(`    // 4. Verify focus management`);
+    }
+
+    lines.push(`  });`);
+    lines.push('');
+  }
+
+  lines.push('});');
+
+  return lines.join('\n');
+}
+
+/** Escape single quotes in strings for use in template literals. */
+function escapeQuotes(s: string): string {
+  return s.replace(/'/g, "\\'");
+}
+
+/** Get mobile viewport width from config (first mobile viewport, or default). */
+function getMobileWidth(config: QAAgentConfig): number {
+  const mobile = config.testing.viewports.find((v) => v.name.toLowerCase().includes('mobile'));
+  return mobile?.width ?? 393;
+}
+
+/** Get mobile viewport height from config. */
+function getMobileHeight(config: QAAgentConfig): number {
+  const mobile = config.testing.viewports.find((v) => v.name.toLowerCase().includes('mobile'));
+  return mobile?.height ?? 851;
+}
+
+// ---------------------------------------------------------------------------
+// Main export
+// ---------------------------------------------------------------------------
+
+/**
+ * Generate Playwright test spec files from a Markdown test plan.
+ *
+ * @param planMarkdown - The Markdown test plan content
+ * @param pageObjectPaths - Paths to generated page object files
+ * @param config - QA Agent configuration
+ * @returns List of generated test file paths
+ */
+export async function generateTestFiles(
+  planMarkdown: string,
+  pageObjectPaths: string[],
+  config: QAAgentConfig,
+): Promise<string[]> {
+  const testsDir = config.output.testsDir;
+  mkdirSync(testsDir, { recursive: true });
+
+  // Parse the test plan
+  const scenarios = parseTestPlan(planMarkdown);
+  if (scenarios.length === 0) {
+    return [];
+  }
+
+  // Group by area
+  const groups = groupByArea(scenarios);
+
+  const generatedFiles: string[] = [];
+
+  for (const group of groups) {
+    const fileName = areaToFileName(group.area, group.subArea);
+    const content = generateSpecFile(group, pageObjectPaths, config);
+    const filePath = join(testsDir, fileName);
+
+    writeFileSync(filePath, content, 'utf-8');
+    generatedFiles.push(filePath);
+  }
+
+  return generatedFiles;
+}
