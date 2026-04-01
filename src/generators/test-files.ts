@@ -10,6 +10,7 @@ import type { QAAgentConfig } from '../core/config.js';
 import { parseTestPlanMarkdown } from '../core/test-plan.js';
 import type { TestScenario } from '../core/test-plan.js';
 import { writeFileSafe } from '../core/fs-utils.js';
+import type { PageDiscovery, PageElement } from '../core/dom-discovery.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -89,11 +90,76 @@ function findPageObjectImport(
   return null;
 }
 
+/**
+ * Find the best matching PageDiscovery for an area name by checking
+ * path segments and page titles.
+ */
+function findDiscoveryForArea(
+  area: string,
+  discoveries: PageDiscovery[],
+): PageDiscovery | null {
+  const areaLower = area.toLowerCase();
+  const areaWords = areaLower.split(/\s+/);
+
+  for (const disc of discoveries) {
+    const pathLower = disc.path.toLowerCase();
+    const titleLower = disc.title.toLowerCase();
+
+    // Check if any area word matches the path or title
+    const matches = areaWords.some(
+      (word) => pathLower.includes(word) || titleLower.includes(word),
+    );
+
+    if (matches) return disc;
+  }
+
+  return null;
+}
+
+/**
+ * Generate a comment block with discovered selectors for a page.
+ */
+function generateDiscoveryComment(discovery: PageDiscovery): string[] {
+  const lines: string[] = [];
+  lines.push(`  // --- Discovered selectors (from DOM discovery) ---`);
+  lines.push(`  // Page title: ${discovery.title}`);
+
+  if (discovery.buttons.length > 0) {
+    lines.push(`  // Buttons:`);
+    for (const btn of discovery.buttons.slice(0, 10)) {
+      lines.push(`  //   ${btn.selector}`);
+    }
+  }
+  if (discovery.inputs.length > 0) {
+    lines.push(`  // Inputs:`);
+    for (const input of discovery.inputs.slice(0, 10)) {
+      lines.push(`  //   ${input.selector}`);
+    }
+  }
+  if (discovery.links.length > 0) {
+    lines.push(`  // Links:`);
+    for (const link of discovery.links.slice(0, 10)) {
+      lines.push(`  //   ${link.selector}`);
+    }
+  }
+  if (discovery.forms.length > 0) {
+    for (const form of discovery.forms) {
+      lines.push(`  // Form "${form.name}":`);
+      for (const field of form.fields) {
+        lines.push(`  //   ${field.selector}`);
+      }
+    }
+  }
+  lines.push(`  // --- End discovered selectors ---`);
+  return lines;
+}
+
 /** Generate a Playwright spec file for a group of scenarios. */
 function generateSpecFile(
   group: AreaGroup,
   pageObjectPaths: string[],
   config: QAAgentConfig,
+  discoveries?: PageDiscovery[],
 ): string {
   const lines: string[] = [];
   const testsDir = config.output.testsDir;
@@ -115,6 +181,13 @@ function generateSpecFile(
     : group.area;
 
   lines.push(`test.describe('${escapeQuotes(describeLabel)}', () => {`);
+
+  // Add discovered selectors as a reference comment
+  const discovery = discoveries ? findDiscoveryForArea(group.area, discoveries) : null;
+  if (discovery && discovery.title !== '[unreachable]') {
+    lines.push(...generateDiscoveryComment(discovery));
+    lines.push('');
+  }
 
   // Add page object variable if available
   if (po) {
@@ -155,20 +228,50 @@ function generateSpecFile(
     }
 
     lines.push('');
-    lines.push(`    // TODO: Implement test steps for "${scenario.scenario}"`);
+
+    // When discovery data is available, add concrete selector hints
+    if (discovery && discovery.title !== '[unreachable]') {
+      lines.push(`    // Discovered selectors available for this page — use these instead of guessing`);
+      lines.push(`    // TODO: Implement test steps for "${scenario.scenario}" using discovered selectors`);
+    } else {
+      lines.push(`    // TODO: Implement test steps for "${scenario.scenario}"`);
+    }
 
     // Generate basic test structure based on type
     if (scenario.type.toLowerCase() === 'validation') {
-      lines.push(`    // 1. Attempt invalid action`);
-      lines.push(`    // 2. Verify error message appears`);
-      lines.push(`    // 3. Verify form/action was not submitted`);
+      if (discovery && discovery.forms.length > 0) {
+        const form = discovery.forms[0];
+        lines.push(`    // 1. Fill form with invalid data`);
+        for (const field of form.fields.slice(0, 3)) {
+          lines.push(`    // await page.${field.selector}.fill('invalid');`);
+        }
+        lines.push(`    // 2. Submit and verify error message`);
+        if (discovery.buttons.length > 0) {
+          lines.push(`    // await page.${discovery.buttons[0].selector}.click();`);
+        }
+        lines.push(`    // 3. Verify form/action was not submitted`);
+      } else {
+        lines.push(`    // 1. Attempt invalid action`);
+        lines.push(`    // 2. Verify error message appears`);
+        lines.push(`    // 3. Verify form/action was not submitted`);
+      }
     } else if (scenario.type.toLowerCase() === 'functional') {
-      lines.push(`    // 1. Set up preconditions`);
-      lines.push(`    // 2. Perform the action`);
-      lines.push(`    // 3. Verify expected outcome`);
+      if (discovery && discovery.buttons.length > 0) {
+        lines.push(`    // 1. Set up preconditions`);
+        lines.push(`    // 2. Perform the action`);
+        lines.push(`    // await page.${discovery.buttons[0].selector}.click();`);
+        lines.push(`    // 3. Verify expected outcome`);
+      } else {
+        lines.push(`    // 1. Set up preconditions`);
+        lines.push(`    // 2. Perform the action`);
+        lines.push(`    // 3. Verify expected outcome`);
+      }
     } else if (scenario.type.toLowerCase() === 'ux') {
       lines.push(`    // 1. Navigate to the page`);
       lines.push(`    // 2. Verify visual/interaction elements`);
+      if (discovery && discovery.headings.length > 0) {
+        lines.push(`    // await expect(page.${discovery.headings[0].selector}).toBeVisible();`);
+      }
       lines.push(`    // 3. Take screenshot for visual comparison`);
       lines.push(`    await page.screenshot({ path: 'screenshots/${scenario.id}.png' });`);
     } else if (scenario.type.toLowerCase() === 'accessibility') {
@@ -214,12 +317,14 @@ function getMobileHeight(config: QAAgentConfig): number {
  * @param planMarkdown - The Markdown test plan content
  * @param pageObjectPaths - Paths to generated page object files
  * @param config - QA Agent configuration
+ * @param discoveries - Optional DOM discovery results for accurate selectors
  * @returns List of generated test file paths
  */
 export async function generateTestFiles(
   planMarkdown: string,
   pageObjectPaths: string[],
   config: QAAgentConfig,
+  discoveries?: PageDiscovery[],
 ): Promise<string[]> {
   const testsDir = config.output.testsDir;
 
@@ -237,7 +342,7 @@ export async function generateTestFiles(
 
   for (const group of groups) {
     const fileName = areaToFileName(group.area, group.subArea);
-    const content = generateSpecFile(group, pageObjectPaths, config);
+    const content = generateSpecFile(group, pageObjectPaths, config, discoveries);
     const filePath = join(testsDir, fileName);
 
     writeFileSafe(filePath, content);

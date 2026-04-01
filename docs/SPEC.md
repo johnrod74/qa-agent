@@ -712,6 +712,50 @@ Validate Options:
   --auto-merge        Auto-merge validated PRs
 ```
 
+### 9.1 DOM Discovery (`--discover`)
+
+The `--discover` flag can be passed to the `generate` and `run` commands:
+
+```
+qa-agent generate --discover
+qa-agent run --discover
+```
+
+When enabled, the agent launches a headless Playwright browser before generating tests and navigates to each page route discovered during codebase analysis. For every page it captures:
+
+- The page title
+- The accessibility tree (`page.accessibility.snapshot()`)
+- All headings, buttons, links, and inputs with their accessible names
+- Form structures with their fields
+
+The discovery results are saved to `plans/dom-discovery.json` and used during test generation to produce accurate Playwright selectors (`getByRole`, `getByLabel`, `getByText`) instead of guessing from source code.
+
+**Output format (`PageDiscovery[]`):**
+
+```typescript
+interface PageElement {
+  role: string;     // ARIA role (e.g. "button", "textbox", "link")
+  name: string;     // Accessible name
+  selector: string; // Best Playwright selector (e.g. "getByRole('button', { name: 'Submit' })")
+}
+
+interface PageDiscovery {
+  path: string;
+  title: string;
+  headings: PageElement[];
+  buttons: PageElement[];
+  links: PageElement[];
+  inputs: PageElement[];
+  forms: { name: string; fields: PageElement[] }[];
+}
+```
+
+**Notes:**
+- Pages requiring authentication accept an optional `storageState` path for pre-authenticated sessions
+- Parameterised routes (e.g. `/products/[id]`) are skipped since they require specific values
+- Unreachable pages are recorded with `title: "[unreachable]"` and empty element arrays
+- The app must be running at `baseUrl` for discovery to work
+
 ---
 
 ## 10. Project Structure

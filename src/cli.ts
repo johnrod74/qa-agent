@@ -66,11 +66,13 @@ addGlobalOptions(
   program
     .command('generate')
     .description('Generate Playwright tests from test plan')
-    .option('--force', 'Overwrite existing test files', false),
+    .option('--force', 'Overwrite existing test files', false)
+    .option('--discover', 'Run DOM discovery before generating tests', false),
 ).action(async (opts) => {
   const { config, logger } = await setup(opts);
   const cliOptions: CliOptions = {
     force: opts.force,
+    discover: opts.discover,
   };
   const orchestrator = new Orchestrator(config, logger, cliOptions);
   await orchestrator.runGenerate();
@@ -152,10 +154,14 @@ addGlobalOptions(
     .option('--skip-generate', 'Use existing test files', false)
     .option('--no-fix', "Only discover bugs, don't attempt fixes")
     .option('--no-validate', "Fix but don't validate (manual review)")
-    .option('--plan-only', 'Just generate the test plan', false),
+    .option('--plan-only', 'Just generate the test plan', false)
+    .option('--discover', 'Run DOM discovery before generating tests', false),
 ).action(async (opts) => {
   const { config, logger } = await setup(opts);
-  const orchestrator = new Orchestrator(config, logger);
+  const cliOptions: CliOptions = {
+    discover: opts.discover,
+  };
+  const orchestrator = new Orchestrator(config, logger, cliOptions);
   await orchestrator.runAll({
     skipPlan: opts.skipPlan,
     skipGenerate: opts.skipGenerate,
@@ -163,7 +169,7 @@ addGlobalOptions(
     noValidate: opts.validate === false,
     planOnly: opts.planOnly,
     dryRun: opts.dryRun,
-    cliOptions: {},
+    cliOptions,
   });
 });
 

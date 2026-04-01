@@ -2,6 +2,7 @@ import type pino from 'pino';
 import type { QAAgentConfig } from './core/config.js';
 import { StateManager } from './core/state.js';
 import type { RunState } from './core/state.js';
+import type { PageDiscovery } from './core/dom-discovery.js';
 
 // ---------------------------------------------------------------------------
 // Agent function signatures
@@ -53,6 +54,7 @@ export interface CliOptions {
   fromScratch?: boolean;
   areas?: string;
   force?: boolean;
+  discover?: boolean;
   filter?: string;
   viewport?: string;
   headed?: boolean;
@@ -69,6 +71,8 @@ export interface AgentContext {
   logger: pino.Logger;
   state: RunState;
   cliOptions: CliOptions;
+  /** DOM discovery results — available when --discover flag is used. */
+  discovery?: PageDiscovery[];
 }
 
 /**
@@ -200,6 +204,26 @@ export class Orchestrator {
     this.logger.info('Phase: generate — creating Playwright tests and page objects');
     const runState = this.stateManager.setPhase('generate');
 
+    // Run DOM discovery if --discover flag is set
+    let discovery: PageDiscovery[] | undefined;
+    if (this.cliOptions.discover) {
+      try {
+        this.logger.info('Running DOM discovery before test generation');
+        const { discoverPages } = await import('./core/dom-discovery.js');
+        const { analyzeApp } = await import('./core/analyzer.js');
+
+        const analysis = await analyzeApp(this.config);
+        discovery = await discoverPages({
+          baseUrl: this.config.app.baseUrl,
+          routes: analysis.routes,
+          plansDir: this.config.output.plansDir,
+        });
+        this.logger.info({ pages: discovery.length }, 'DOM discovery complete');
+      } catch (err) {
+        this.logger.warn({ err }, 'DOM discovery failed — falling back to source-code analysis');
+      }
+    }
+
     try {
       const { generateAgent } = await import('./agents/generator.js');
       const result = await generateAgent({
@@ -207,6 +231,7 @@ export class Orchestrator {
         logger: this.logger,
         state: runState,
         cliOptions: this.cliOptions,
+        discovery,
       });
 
       this.logger.info(
